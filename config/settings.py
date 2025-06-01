@@ -121,6 +121,7 @@ STATICFILES_DIRS = [
 
 # Папка, куда Django будет собирать все статические файлы для раздачи (collectstatic)
 # STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_collected') # Пока не нужна для разработки
+ALLOWED_HOSTS = ['tourcore.onrender.com']
 
 MEDIA_URL = '/media/'
 # Папка, где будут храниться загружаемые пользователями файлы (картинки к точкам)
