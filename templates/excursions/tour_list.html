@@ -1,0 +1,103 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title|default:"Список экскурсий" }} - Мои Экскурсии</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { 
+            padding-top: 1rem; 
+            background-color: #f8f9fa; /* Светлый фон для всей страницы */
+        }
+        .container {
+            max-width: 960px; /* Ограничим максимальную ширину контейнера для лучшей читаемости */
+        }
+        .tour-card-link {
+            /* text-decoration: none; */ /* Bootstrap сам уберет для list-group-item-action */
+            transition: background-color 0.15s ease-in-out; /* Плавный переход для hover */
+        }
+        
+        /* Можно добавить :hover стили, если стандартных от Bootstrap недостаточно */
+        /* .tour-card-link:hover {
+            background-color: #e9ecef;
+        } */
+        .icon-in-button { /* Стиль для иконок в кнопках */
+             margin-right: 0.35rem;
+             vertical-align: text-bottom; /* Выравнивание иконки по тексту */
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4"> {# Увеличил вертикальный padding #}
+        <header class="pb-3 mb-4 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+                {# Левая группа: Кнопка "На главную" и Заголовок #}
+                <div class="d-flex align-items-center">
+                    <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-sm me-3" title="На главную страницу">
+                        <i class="bi bi-arrow-left-circle"></i> {# Иконка "назад" или "домой" #}
+                        <span class="d-none d-md-inline">На главную</span> {# Текст виден на md и больше #}
+                    </a>
+                    <h1 class="h3 mb-0">{{ page_title|default:"Список экскурсий" }}</h1>
+                </div>
+                {# Правая группа: Кнопка "Создать новую" #}
+                <a href="{% url 'excursions:create_tour' %}" class="btn btn-primary btn-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg icon-in-button" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/>
+                    </svg>
+                    <span class="d-none d-md-inline">Создать экскурсию</span> {# Текст виден на md и больше #}
+                    <span class="d-inline d-md-none">+</span> {# Только "+" на маленьких экранах #}
+                </a>
+            </div>
+        </header>
+
+        {% if tours %}
+            <div class="list-group">
+                {% for tour in tours %}
+                    <a href="{% url 'excursions:tour_detail' tour_id=tour.id %}" class="list-group-item list-group-item-action tour-card-link p-3 mb-3 border rounded shadow-sm">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1 text-primary">{{ tour.title }}</h5>
+                            <div class="text-end flex-shrink-0"> {# Контейнер для выравнивания по правому краю #}
+                            {% if tour.author %}
+                                <small class="d-block tour-author" style="line-height: 1.2;"> {# Автор на своей строке #}
+                                    <i class="bi bi-person-fill" style="font-size: 0.8em; vertical-align: middle;"></i>
+                                    {{ tour.author.login }}
+                                </small>
+                            {% endif %}
+                            <small class="text-muted">{{ tour.created_at|date:"d.m.Y, H:i" }}</small>
+                            </div>
+                        </div>
+                        {% if tour.description %}
+                            <p class="mb-1 mt-1 text-body-secondary small">{{ tour.description|truncatewords_html:30 }}</p>
+                        {% else %}
+                            <p class="mb-1 mt-1 text-body-secondary small fst-italic">Описание отсутствует.</p>
+                        {% endif %}
+                        <small class="d-block text-muted mt-2">Количество точек: {{ tour.points.count }}</small>
+                        
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center p-5 my-5 bg-light border rounded shadow-sm">
+                {# Можно использовать иконку Bootstrap или другую #}
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-geo-alt-fill text-secondary mb-3" viewBox="0 0 16 16">
+                    <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/>
+                </svg>
+                <h4 class="fw-normal">Экскурсий пока нет</h4>
+                <p class="lead text-muted">Почему бы не создать свою первую увлекательную экскурсию?</p>
+                <a href="{% url 'excursions:create_tour' %}" class="btn btn-lg btn-success mt-3">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-compass icon-in-button" viewBox="0 0 16 16">
+                        <path d="M8 16.016a7.5 7.5 0 0 0 1.962-14.74A1 1 0 0 0 9 0H7a1 1 0 0 0-.962 1.276A7.5 7.5 0 0 0 8 16.016m6.5-7.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0"/>
+                        <path d="m6.94 7.44 4.95-2.83-2.83 4.95-4.949 2.83 2.828-4.95z"/>
+                    </svg>
+                    Создать экскурсию
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

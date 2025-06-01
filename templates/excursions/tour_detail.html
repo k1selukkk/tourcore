@@ -1,0 +1,198 @@
+<!-- excursions/templates/excursions/tour_detail.html -->
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title|default:tour.title }} - Детали экскурсии</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_api_key }}&lang=ru_RU" type="text/javascript"></script>
+    <style>
+        body { padding-top: 1rem; background-color: #f8f9fa; }
+        .container { max-width: 960px; }
+        #tour-preview-map { 
+            width: 100%; 
+            height: 400px; 
+            margin-bottom: 1.5rem; 
+            border-radius: 0.375rem; 
+            border: 1px solid #dee2e6;
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+        }
+        .point-list-item { 
+            background-color: #fff; 
+            border-radius: .25rem; 
+        }
+        .hero-header {
+            background-color: #0d6efd;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'excursions:tour_list' %}">Все экскурсии</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ tour.title }}</li>
+            </ol>
+        </nav>
+
+        {% if messages %}
+            <div class="row justify-content-center mb-3">
+                <div class="col-md-10 col-lg-12">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="p-4 p-md-5 mb-4 rounded hero-header shadow-sm">
+            <div class="col-lg-10 px-0">
+                <h1 class="display-5 fst-italic">{{ tour.title }}</h1>
+                {% if tour.description %}
+                    <p class="lead my-3">{{ tour.description }}</p>
+                {% endif %}
+                <p class="lead mb-0">
+                    Количество точек: {{ tour.points.count }}
+                </p>
+            </div>
+        </div>
+        
+        {% if tour.points.all %}
+            <div class="row g-4 mb-4">
+                <div class="col-md-7">
+                    <h4 class="mb-3">Карта маршрута</h4>
+                    <div id="tour-preview-map">
+                        <!-- Сообщение об ошибке будет здесь, если JS не сработает -->
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <h4 class="mb-3">Точки интереса:</h4>
+                    <div class="list-group shadow-sm rounded">
+                        {% for point in tour.points.all|dictsort:"order" %}
+                            <div class="list-group-item point-list-item py-3">
+                                <div class="d-flex w-100 justify-content-between">
+                                     <h6 class="mb-1"><strong>{{ forloop.counter }}. {{ point.name }}</strong></h6>
+                                </div>
+                                {% if point.description %}
+                                    <p class="mb-0 text-muted small">{{ point.description|truncatewords:15 }}</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-warning text-center p-4" role="alert">
+                <h4 class="alert-heading">Нет точек!</h4>
+                <p>В этой экскурсии пока не добавлено ни одной точки интереса.</p>
+                <hr>
+                <p class="mb-0">Вы можете <a href="{% url 'excursions:add_points_to_tour' tour_id=tour.id %}" class="alert-link">добавить точки</a> прямо сейчас.</p>
+            </div>
+        {% endif %}
+        
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4 pt-3 border-top">
+            {% if tour.points.all %}
+            <a href="{% url 'excursions:tour_play' tour_id=tour.id %}" class="btn btn-success btn-lg px-4 gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-circle-fill me-2" viewBox="0 0 16 16">
+                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M6.79 5.093A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814z"/>
+                </svg>
+                Начать экскурсию
+            </a>
+            {% else %}
+             <a href="{% url 'excursions:add_points_to_tour' tour_id=tour.id %}" class="btn btn-info btn-lg px-4">
+                Добавить точки в экскурсию
+            </a>
+            {% endif %}
+             
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script id="tour-points-data-for-preview" type="application/json">
+        {{ points_data_json|safe }}
+    </script>
+    <script>
+        ymaps.ready(initPreviewMap);
+
+        function initPreviewMap() {
+            const mapDiv = document.getElementById("tour-preview-map");
+            const pointsDataScriptTag = document.getElementById("tour-points-data-for-preview");
+            let pointsData = [];
+
+            if (!pointsDataScriptTag) {
+                console.error("Тег скрипта с данными точек не найден!");
+                if(mapDiv) mapDiv.innerHTML = '<p class="text-center text-danger p-5">Ошибка: данные точек не найдены.</p>';
+                return;
+            }
+
+            try {
+                pointsData = JSON.parse(pointsDataScriptTag.textContent);
+            } catch (e) {
+                console.error("Ошибка парсинга JSON данных точек:", e, "\nСодержимое тега:", pointsDataScriptTag.textContent);
+                if(mapDiv) mapDiv.innerHTML = '<p class="text-center text-danger p-5">Ошибка загрузки данных для карты.</p>';
+                return;
+            }
+            
+            if (!pointsData || pointsData.length === 0) {
+                console.log("Нет точек для отображения на карте превью.");
+                if(mapDiv) mapDiv.innerHTML = '<p class="text-center text-muted p-5">В этой экскурсии пока нет точек для отображения маршрута.</p>';
+                return;
+            }
+
+            try {
+                const previewMap = new ymaps.Map("tour-preview-map", {
+                    center: [pointsData[0].latitude, pointsData[0].longitude],
+                    zoom: 13,
+                    controls: ['zoomControl', 'typeSelector', 'fullscreenControl']
+                });
+
+                const geoObjects = [];
+                pointsData.forEach(function(point, index) {
+                    const placemark = new ymaps.Placemark([point.latitude, point.longitude], {
+                        iconContent: index + 1,
+                        hintContent: point.name
+                    }, {
+                        preset: 'islands#blueStretchyIcon'
+                    });
+                    geoObjects.push(placemark);
+                    previewMap.geoObjects.add(placemark);
+                });
+
+                if (geoObjects.length > 1) {
+                    const coordinates = geoObjects.map(obj => obj.geometry.getCoordinates());
+                    ymaps.route(coordinates, {
+                        mapStateAutoApply: true,
+                        routingMode: 'pedestrian'
+                    }).then(function (route) {
+                        previewMap.geoObjects.add(route);
+                        // Убедимся, что карта показывает все объекты после добавления маршрута
+                        if (previewMap.geoObjects.getBounds()) {
+                            previewMap.setBounds(previewMap.geoObjects.getBounds(), {
+                                checkZoomRange: true, // Проверять допустимый диапазон масштабов
+                                duration: 500 // Плавный переход
+                            });
+                        }
+                    }, function (err) {
+                        console.error("Ошибка построения маршрута:", err.message ? err.message : err);
+                        if (geoObjects.length > 0 && previewMap.geoObjects.getBounds()) {
+                             previewMap.setBounds(previewMap.geoObjects.getBounds(), {checkZoomRange: true, duration: 500});
+                        }
+                    });
+                } else if (geoObjects.length === 1) {
+                    previewMap.setCenter(geoObjects[0].geometry.getCoordinates(), 15);
+                }
+            } catch (e) {
+                console.error("Критическая ошибка при инициализации карты Яндекс:", e);
+                if(mapDiv) mapDiv.innerHTML = '<p class="text-center text-danger p-5">Не удалось загрузить карту.</p>';
+            }
+        }
+    </script>
+</body>
+</html>

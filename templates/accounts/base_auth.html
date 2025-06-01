@@ -1,0 +1,15 @@
+<!-- D:\login\templates\accounts\base_auth.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Auth{% endblock %}</title>
+</head>
+<body>
+    <div class="auth-container">
+        {% block content %}
+        <!-- Дочерние шаблоны будут вставлены сюда -->
+        {% endblock %}
+    </div>
+</body>
+</html>

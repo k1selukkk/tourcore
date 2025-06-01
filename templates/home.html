@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h1>Добро пожаловать, {{ user.name }}!</h1>
+        <p>Рады видеть вас на нашем сервисе экскурсий</p>
+    </div>
+
+    <!-- Фото на главной странице -->
+    <div style="
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    ">
+        <img src="{% static 'img/photo.jpg' %}" style="
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        ">
+        <h2 style="text-align: center;">Откройте для себя новые места!</h2>
+        <p style="text-align: center;">
+            Начните свое путешествие с нашими эксклюзивными экскурсиями.<br>
+            Скоро здесь появятся новые возможности для исследования мира.
+        </p>
+    </div>
+{% endblock %}

@@ -1,0 +1,141 @@
+<!-- excursions/templates/excursions/tour_play.html -->
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{ page_title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_api_key }}&lang=ru_RU" type="text/javascript"></script>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        .app-container { display: flex; flex-direction: column; height: 100vh; }
+        #play-map-container { flex-grow: 1; position: relative; }
+        #play-map { width: 100%; height: 100%; }
+        
+        #point-info-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(255, 255, 255, 0.98);
+            border-top: 1px solid #dee2e6;
+            box-shadow: 0 -3px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transform: translateY(100%); /* Начальное состояние - скрыто */
+            transition: transform 0.3s ease-in-out, height 0.35s ease-in-out; /* Анимируем высоту */
+            display: flex;
+            flex-direction: column;
+            /* Начальная высота для СВЕРНУТОГО состояния - подбирается так, чтобы влез основной контент */
+            height: auto; /* Позволяем содержимому определить высоту, но ограничим потом */
+            max-height: 45vh; /* Максимальная высота для свернутого состояния, если контента много */
+        }
+        #point-info-panel.visible {
+            transform: translateY(0%); 
+        }
+        #point-info-panel.expanded {
+            height: 85vh; /* Высота в РАЗВЕРНУТОМ состоянии */
+            max-height: 85vh; /* Явно ограничиваем */
+        }
+
+        #panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0; 
+        }
+        #panel-header h4 { margin-bottom: 0; font-size: 1.1rem; }
+
+        #panel-content-wrapper {
+            padding: 10px 15px 15px 15px; /* Уменьшил верхний padding */
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        /* Картинка по умолчанию скрыта */
+        #point-image-display { 
+            display: none; 
+            width: 100%; 
+            max-width: 500px; 
+            height: auto; 
+            max-height: 40vh; /* Ограничение высоты для картинки в развернутом виде */
+            border-radius: .3rem; 
+            margin: 0 auto 1rem auto; /* Отступ снизу и центрирование */
+            object-fit: contain; 
+        }
+        /* Показываем картинку, если панель развернута, есть src и пользователь прибыл */
+        #point-info-panel.expanded #point-image-display.has-image.arrived {
+            display: block;
+        }
+        
+        /* Описание в свернутом виде (если не размыто) */
+        #point-info-panel:not(.expanded) #point-description-display:not(.blurred-description) {
+            max-height: 4.5em; /* Примерно 3 строки */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            /* white-space: nowrap; /* Если нужно в одну строку с многоточием, но это для коротких */
+        }
+        /* Описание в развернутом виде */
+         #point-info-panel.expanded #point-description-display {
+            max-height: none; /* Снимаем ограничение */
+        }
+
+
+        .status-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1001;
+            padding: 0.5rem 1rem;
+            background-color: rgba(0,0,0,0.75); color: white; text-align: center; font-size: 0.9rem;
+        }
+        #btn-next-point { font-size: 1.1rem; padding: 0.75rem 1.25rem; }
+        .blurred-description { filter: blur(4px); user-select: none; }
+        .toggle-panel-btn i { transition: transform 0.3s ease-in-out; }
+        #point-info-panel.expanded .toggle-panel-btn i { transform: rotate(180deg); }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="status-bar" id="status-message-bar">
+            Инициализация геолокации...
+        </div>
+
+        <div id="play-map-container">
+            <div id="play-map"></div>
+        </div>
+
+        <div id="point-info-panel">
+            <div id="panel-header">
+                <h4 id="point-name-display" class="text-truncate">Название точки</h4>
+                <button class="btn btn-light btn-sm toggle-panel-btn" type="button" aria-label="Развернуть/свернуть панель">
+                    <i class="bi bi-chevron-up"></i>
+                </button>
+            </div>
+            <div id="panel-content-wrapper">
+                <p id="distance-to-point" class="text-muted small mt-1 mb-2"></p>
+                <img id="point-image-display" src="#" alt="Изображение точки">
+                <div id="point-description-container">
+                    <p id="point-description-display" class="mb-2">Описание точки...</p>
+                </div>
+                <button id="btn-next-point" class="btn btn-primary w-100 mb-2" disabled>Следующая точка</button>
+                <a href="{% url 'excursions:tour_detail' tour_id=tour.id %}" class="btn btn-outline-secondary w-100 btn-sm">Завершить и выйти</a>
+            </div>
+        </div>
+    </div>
+
+    <script id="tour-data-for-js" type="application/json">
+        {
+            "tourId": {{ tour.id }},
+            "points": {{ points_json|safe }},
+            "yandexApiKey": "{{ yandex_maps_api_key }}",
+            "arrivalRadius": {{ arrival_radius_meters }}
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'excursions/js/tour_player.js' %}"></script>
+</body>
+</html>
